@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game</title>
+    <link rel="stylesheet" type="text/css" href="/game.css">
+</head>
+<body>
+    <div id="time" style="position: absolute; height: 25%; font-size: 50px; min-width: 10%; text-align: center; color: white">⏳30</div>
+    <div class="playerSide userCards enemy" style="height: 20%; display: flex; max-width: 100%;">
+    </div>
+    <div class="playerSide enemy" style="height: 30%; display: flex">
+        <div class="userProfile enemy" style="width: 70px; margin-right: 20px">
+            <img class="avatar enemy" src="" alt="Avatar.IMG" style="height: 60px; max-width: 70px">
+            <div class="name enemy">Loading...</div>
+            <div class="HP enemy">💜20</div>
+            <div class="money enemy">🍖10</div>
+        </div>
+        <div class="activeCards enemy" style="display: flex; max-height: 100%;"></div>
+    </div>
+    <div id="deck" style="position: absolute; height: 100%; right: 10px; display: flex">
+    </div>
+    <div class="playerSide you" style="height: 30%; display: flex">
+        <div class="userProfile you" style="width: 70px; margin-right: 20px">
+            <img class="avatar you" src="" alt="Avatar.IMG" style="height: 60px; max-width: 70px">
+            <div class="name you">Loading...</div>
+            <div class="HP you">💜20</div>
+            <div class="money you">🍖10</div>
+            <button id="confirm">Ready</button>
+        </div>
+        <div class="activeCards you" style="display: flex; max-height: 100%;"></div>
+    </div>
+    <div class="playerSide userCards you" style="height: 20%; display: flex; max-width: 100%;">
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let current_game;
+        let gamechange = [];
+        let myData;
+        let timeoutID = 0;
+
+        socket.on('update_game', (game, need_move) => {
+            current_game = game;
+            update_visual();
+            clearTimeout(timeoutID);
+            document.getElementById('time').innerText = '⏳wait';
+            if (need_move){
+                timer(30);
+                document.getElementById('confirm').innerText = 'ready';
+            }
+        });
+
+        socket.on('get_your_data', () => {
+            if (myData)
+                socket.emit('my_data', {avatar: myData.avatar, name: myData.fullName});
+            else
+                setTimeout(()=>{
+                    socket.emit('my_data', {avatar: myData.avatar, name: myData.fullName});
+                }, 1000);
+        });
+
+        socket.on('set_enemy_data', (enemy_data) => {
+            document.querySelector('.avatar.enemy').src = '/get-image/' + enemy_data.avatar;
+            document.querySelector('.name.enemy').innerText = enemy_data.name;
+        })
+
+        socket.on('card_attack', (card_attack) => {
+            clearTimeout(timeoutID);
+            let attack_card = document.getElementById(`cardid${card_attack.attack.id}`);
+
+            let defence_card;
+            if (card_attack.defence)
+                defence_card = document.getElementById(`cardid${card_attack.defence.id}`);
+            else {
+                person_damage_visual(attack_card);
+            }
+            if (attack_card)
+                card_attack_visual(attack_card, defence_card, card_attack);
+        })
+
+        socket.on('endGame', (result) => {
+            alert(result);
+            window.location.href = '/profile';
+        });
+
+        document.getElementById('confirm').addEventListener('click', function () {
+            if (current_game){
+                socket.emit('game_change', gamechange);
+                gamechange = [];
+            }
+            document.getElementById('confirm').innerText = 'wait';
+        });
+        function update_visual() {
+            updateDeckCount(current_game.deck.length);
+            update_hp(current_game.player1.hp, 1);
+            update_hp(current_game.player2.hp, 2);
+            update_money(current_game.player1.money, 1);
+            update_money(current_game.player2.money, 2);
+            let parent = document.querySelector('.userCards.you');
+            deleteAllCilds(parent);
+            current_game.player1.cards.forEach((card) => {
+                create_card(card.attack, card.defence, card.cost, card.description, card.image,
+                    parent, card.id);
+            });
+
+            parent = document.querySelector('.activeCards.you');
+            deleteAllCilds(parent);
+            current_game.player1.activeCards.forEach((card) => {
+                create_card(card.attack, card.defence, card.cost, card.description, card.image,
+                    parent, card.id);
+            });
+
+            parent = document.querySelector('.userCards.enemy');
+            deleteAllCilds(parent);
+            for (let i = 0; i < current_game.player2.cards.length; i++) {
+                create_cardback(parent);
+            }
+
+            parent = document.querySelector('.activeCards.enemy');
+            deleteAllCilds(parent);
+            current_game.player2.activeCards.forEach((card) => {
+                create_card(card.attack, card.defence, card.cost, card.description, card.image,
+                    parent, card.id);
+            });
+            make_cards_clickable();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/getAccData", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 1) {
+                        myData = data.userdata;
+                        document.querySelector('.avatar.you').src = '/get-image/' + data.userdata.avatar;
+                        document.querySelector('.name.you').innerText = data.userdata.fullName;
+                    }
+                })
+                .catch(error => {
+                    console.error("Network error: " + error);
+                });
+
+        });
+        function make_cards_clickable(){
+            const usercards = document.querySelectorAll('.userCards.you > .card');
+
+            usercards.forEach(function(element) {
+                element.addEventListener('click', function() {
+                    let card_id = Number.parseInt(element.getAttribute('id').trim().substring(6));
+                    const indexToRemove = current_game.player1.cards.findIndex(card => card.id === card_id);
+
+                    if (indexToRemove !== -1) {
+                        if (current_game.player1.cards[indexToRemove].cost > current_game.player1.money)
+                            return;
+                        gamechange.push(card_id);
+                        let removedCard = current_game.player1.cards.splice(indexToRemove, 1)[0];
+                        current_game.player1.money -= removedCard.cost;
+                        current_game.player1.activeCards.push(removedCard);
+                    }
+                    update_visual();
+                });
+            });
+
+            const useractivecards = document.querySelectorAll('.activeCards.you > .card');
+
+            useractivecards.forEach(function(element) {
+                element.addEventListener('click', function() {
+                    let card_id = Number.parseInt(element.getAttribute('id').trim().substring(6));
+                    if (checkAndRemoveNumber(card_id)){
+                        const indexToRemove = current_game.player1.activeCards.findIndex(card => card.id === card_id);
+                        if (indexToRemove !== -1) {
+                            const removedCard = current_game.player1.activeCards.splice(indexToRemove, 1)[0];
+                            current_game.player1.money += removedCard.cost
+                            current_game.player1.cards.push(removedCard);
+                        }
+                        update_visual();
+                    }
+                });
+            });
+        }
+        function create_card(attack, defence, cost, description, cardImg, parent_el, id) {
+            let html = `<p class="attack" style="position: absolute; width: 91px; height: 91px; text-align: center; right: 0; top: 8%; font-size: 50px">${attack}</p>
+      <p class="defence" style="position: absolute; width: 91px; height: 91px; text-align: center; right: 0; top: 36%; font-size: 50px; font-weight: bold;">${defence}</p>
+      <p class="cost" style="position: absolute; width: 91px; height: 91px; text-align: center; right: 0; top: 64%; font-size: 50px; font-weight: bold;">${cost}</p>
+      <p class="description" style="position: absolute; width: 496px; height: 128px; text-align: center; top: 80%; font-size: 50px; font-weight: bold;">${description}</p>
+      <img src="/get-card/${cardImg}" alt="CARD">`
+            const cardElement = document.createElement('div');
+            cardElement.className = 'card';
+            cardElement.style.position = 'relative';
+            cardElement.style.width = '496px';
+            cardElement.style.height = '696px';
+            cardElement.innerHTML = html;
+            cardElement.id = `cardid${id}`
+            parent_el.appendChild(cardElement);
+            return cardElement;
+        }
+        function create_cardback(parent_el) {
+            const cardElement = document.createElement('img');
+            cardElement.src = '/get-image/cardback.png'
+            cardElement.alt = 'CARDBACK'
+            cardElement.className = 'card';
+            cardElement.style.position = 'relative';
+            cardElement.style.width = '496px';
+            cardElement.style.height = '696px';
+            parent_el.appendChild(cardElement);
+            return cardElement;
+        }
+        function createDeck(size) {
+            let top = -105;
+            let left = -75;
+            for (let i = 0; i < size; i++) {
+                setTimeout(() => {
+                    const deckElement = document.createElement('img');
+                    deckElement.src = '/get-image/cardback.png';
+                    deckElement.style.position = 'absolute';
+                    deckElement.style.width = '150px';
+                    deckElement.style.height = '210px';
+                    deckElement.style.top = `${top}px`;
+                    deckElement.style.left = `${left}px`;
+                    deckElement.className = 'deckCard';
+                    document.getElementById('deck').appendChild(deckElement);
+                    top += 5;
+                    left -= 5;
+                }, i * 25);
+            }
+        }
+        function updateDeckCount(size) {
+            const deck = document.getElementById('deck');
+            const children = deck.children;
+            while (children.length > size) {
+                deck.removeChild(children[children.length - 1]);
+            }
+        }
+        function update_hp(hp_new, side) {
+            document.querySelector(`.HP.${side === 1 ? 'you' : 'enemy'}`).innerText = `💜${hp_new}`;
+        }
+        function update_money(money_new, side) {
+            document.querySelector(`.money.${side === 1 ? 'you' : 'enemy'}`).innerText = `🍖${money_new}`;
+        }
+        function deleteAllCilds(parentElement) {
+            while (parentElement.firstChild) {
+                parentElement.removeChild(parentElement.firstChild);
+            }
+        }
+
+        function card_attack_visual(attack_card, defence_card, values) {
+            const x1 = attack_card.offsetLeft + attack_card.offsetWidth / 2;
+            const y1 = attack_card.parentElement.offsetTop + attack_card.offsetHeight / 2;
+            const x2 = defence_card.offsetLeft + defence_card.offsetWidth / 2;
+            const y2 = defence_card.parentElement.offsetTop + defence_card.offsetHeight / 2;
+            move_card(attack_card, (x2-x1)/1.1, (y2-y1)/1.1);
+            setTimeout(() => {
+                move_card(defence_card, (x1-x2)/2.9, (y1-y2)/2.9);
+            }, 200)
+            attack_card.querySelector('.defence').innerText = values.attack.defence;
+            defence_card.querySelector('.defence').innerText = values.defence.defence;
+            setTimeout(()=>{
+                attack_card.style.transform = '';
+                defence_card.style.transform = '';
+            }, 300);
+            setTimeout(()=>{
+                if (values.attack.defence <= 0)
+                    attack_card.style.display = 'none';
+                if (values.defence.defence <= 0)
+                    defence_card.style.display = 'none';
+            }, 700);
+        }
+        function person_damage_visual(attack_card) {
+            if (attack_card){
+                attack_card.style.transform = 'scale(1.4)';
+                setTimeout(() => {
+                    attack_card.style.transform = '';
+                })
+                let hp = document.querySelector('.HP.you');
+                if (attack_card.parentElement.classList.contains('you'))
+                    hp = document.querySelector('.HP.enemy');
+                hp.innerText += ` 🗡${attack_card.querySelector('.attack').innerText}`;
+            }
+        }
+
+        function move_card(card, x_off, y_off) {
+            card.style.transform = `translate(${x_off}px, ${y_off}px)`;
+        }
+        function checkAndRemoveNumber(number) {
+            const index = gamechange.indexOf(number);
+
+            if (index !== -1) {
+                gamechange.splice(index, 1);
+                return true;
+            }
+            return false;
+        }
+
+        function timer(sec) {
+            document.getElementById('time').innerText = `⏳${sec}`;
+            if (sec === 0)
+                document.getElementById('confirm').click();
+            else
+                timeoutID = setTimeout(timer, 1000, sec - 1);
+        }
+        createDeck(20);
+    </script>
+</body>
+</html>

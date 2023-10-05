@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remind password</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<body>
+<h1>Remind password</h1>
+<form >
+    <p id="error" style="color: red; display: none;"></p>
+    <label for="email">Enter your email:</label>
+    <input type="text" id="email" name="email" required><br><br>
+    <div style="display: grid; gap: 10px;">
+        <input type="button" id="remindPass" value="Recover">
+        <input type="button" id="cancel" value="Cancel">
+    </div>
+</form>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const Error_field = document.getElementById('error');
+
+
+        document.getElementById('remindPass').addEventListener("click", function (event) {
+            event.preventDefault();
+            const email_entered = document.querySelector("#email").value;
+
+            fetch("/remindPass", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({email: email_entered})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 1) {
+                        Error_field.style.display = 'none';
+                        alert(data.msg);
+                    } else {
+                        Error_field.innerText = data.msg;
+                        Error_field.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error("Network error: " + error);
+                });
+        });
+    });
+</script>
+</body>
+</html>

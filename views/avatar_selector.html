@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Avatar change</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<body>
+<h1>Click on avatar</h1>
+<div class="main_content" style="max-width: 640px">
+    <div id="avatars" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+    </div>
+    <br>
+    <div style="display: grid;">
+      <input type="button" id="cancel" value="Cancel">
+    </div>
+</div>
+
+<script>
+    function create_avatar(name) {
+        let img = document.createElement('img');
+        img.src = `/get-image/${name}.png`;
+        img.alt = '';
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '200px';
+        img.class = 'avatar';
+        img.addEventListener('click', function() {
+            fetch("/updateAvatar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ new_avatar: `${name}.png` })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 1) {
+                        window.location.href = '/profile';
+                    }
+                })
+                .catch(error => {
+                    console.error("Network error: " + error);
+                });
+        });
+        document.getElementById('avatars').appendChild(img);
+    }
+
+  document.addEventListener("DOMContentLoaded", function () {
+      create_avatar(`default`);
+      for (let i = 1; i < 9; i++) {
+          create_avatar(`avatar_${i}`);
+      }
+    document.getElementById('cancel').addEventListener("click", function (event) {
+      event.preventDefault();
+      window.location.href = '/profile';
+    });
+  });
+</script>
+</body>
+</html>

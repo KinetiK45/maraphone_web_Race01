@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<body>
+<h1>Login</h1>
+<form >
+    <p id="errors" style="color: red"></p>
+    <label for="login">Username:</label>
+    <input type="text" id="login" name="login" required><br><br>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required><br><br>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px;">
+        <input type="button" id="logButton" value="Login">
+        <input type="button" id="remindPass" value="Forgot password?">
+        <input type="button" id="regButton" value="To registration page" style="grid-column: span 2;">
+    </div>
+</form>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        document.getElementById('logButton').addEventListener("click", function (event) {
+            event.preventDefault();
+            const username = document.querySelector("#login").value;
+            const password = document.querySelector("#password").value;
+
+            if (username === '' || password === '')
+                return;
+
+            const userData = {
+                login: username,
+                password: password,
+            };
+
+            fetch("/loginCheck", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(userData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 1) {
+                        window.location.href = '/profile';
+                    } else {
+                        let error = document.getElementById('errors');
+                        error.innerText = data.msg;
+                        error.style.display = 'block';
+                        setTimeout(() => {document.getElementById('errors').style.display = 'none'}, 5000);
+                    }
+                })
+                .catch(error => {
+                    console.error("Network error: " + error);
+                });
+        });
+        document.getElementById('regButton').addEventListener("click", function (event) {
+            window.location.href = '/registration';
+        });
+        document.getElementById('remindPass').addEventListener("click", function (event) {
+            window.location.href = '/recovery';
+        });
+    });
+</script>
+</body>
+</html>

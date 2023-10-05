@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile</title>
+  <link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<body>
+<h1>Profile</h1>
+<div class="main_content">
+  <img id="avatar" src="" alt="Avatar.IMG" style="max-width: 100%;">
+  <p id="username">Loading...</p>
+  <br>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px;">
+    <input type="button" id="avatar_change" value="Change avatar">
+    <input type="button" id="nickname_change" value="Change nickname">
+    <input type="button" id="play" value="Play">
+    <input type="button" id="rules" value="Rules">
+    <input type="button" id="logout" value="Logout" style="grid-column: span 2;">
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    fetch("/getAccData", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.state === 1) {
+                console.log(data.userdata);
+                document.getElementById('avatar').src = '/get-image/' + data.userdata.avatar;
+                document.getElementById('username').innerText = data.userdata.fullName;
+              }
+            })
+            .catch(error => {
+              console.error("Network error: " + error);
+            });
+    document.getElementById('avatar_change').addEventListener("click", function (event) {
+      window.location.href = '/avatarChange';
+    });
+    document.getElementById('nickname_change').addEventListener("click", function (event) {
+      let new_nickname = prompt('Enter new nickname: ');
+      fetch("/changeNickname", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({new_nickname: new_nickname})
+      });
+      document.getElementById('username').innerText = new_nickname;
+    });
+    document.getElementById('logout').addEventListener("click", function (event) {
+      event.preventDefault();
+      fetch("/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+      })
+              .then(response => response.json())
+              .then(data => {
+                if (data.state === 1) {
+                  window.location.href = '/login';
+                }
+              })
+              .catch(error => {
+                console.error("Network error: " + error);
+              });
+    });
+    document.getElementById('play').addEventListener("click", function (event) {
+      window.location.href = '/game';
+    });
+    document.getElementById('rules').addEventListener("click", function (event) {
+      window.location.href = '/rules';
+    });
+  });
+</script>
+</body>
+</html>

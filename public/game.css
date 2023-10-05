@@ -1,0 +1,122 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    height: 100vh;
+    background-image: url("/get-image/background.png");
+    background-size: cover;
+    position: relative;
+}
+
+body::before,
+body::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 20%;
+}
+body::before {
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.3));
+}
+body::after {
+    background: linear-gradient(rgba(0, 0, 0, 0.3), transparent);
+    z-index: -1;
+}
+
+body::before {
+    top: 0;
+}
+
+body::after {
+    bottom: 0;
+}
+
+.activeCards {
+    transform: scale(0.25);
+    transform-origin: top left;
+}
+
+.activeCards > .card {
+    margin-left: 30px;
+}
+
+.userCards {
+    transform: scale(0.2);
+    transform-origin: top;
+    height: 20vh;
+    display: flex;
+    max-width: 100%;
+}
+
+.card {
+    transition: transform 1s;
+    transform-origin: top center;
+}
+
+.card, .deckCard {
+    border-radius: 30px;
+    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+}
+.userCards.you > .card {
+    transform-origin: bottom center;
+}
+.attack, .defence, .cost, .description{
+    color: white;
+}
+
+.card:hover {
+    margin: 100px;
+    transform: scale(1.3);
+}
+
+.deckCard {
+    transition: transform 0.5s;
+    transform-origin: bottom right;
+}
+.deckCard:hover {
+    transform: rotateZ(-10deg);
+}
+
+.HP {
+    transition: transform 0.5s;
+}
+
+#confirm {
+    display: inline-block;
+    background-color: #ff1212;
+    color: #ffffff;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    transition: 0.3s;
+}
+
+#confirm:hover {
+    background-color: #2eff00;
+    color: #000000;
+}
+
+.userProfile {
+    color: white;
+    text-align: center;
+    font-size: 30px;
+    min-width: 10%;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+}
+
+.userProfile.you {
+    border-bottom-right-radius: 20px;
+}
+
+.userProfile.enemy {
+    border-top-right-radius: 20px;
+}
+
